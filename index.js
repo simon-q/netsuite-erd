@@ -1,36 +1,21 @@
 const fs = require('fs');
 const cheerio = require('cheerio');
-const { dirname } = require('path');
 
 const INDENT = '    ';
 let output = '';
 
-// TODO: loop all files in a dir /record
-const fileName = 'record/account.html';
-// const fileName = 'record/account_activity.html';
-// const dirName = 'record';
+const dirName = 'record';
+const files = fs.readdirSync(dirName);
+files.forEach(processFile);
 
-// const files = fs.readdirSync(dirName);
-// files.forEach(processFile);
-
-// const processFile = (fileName) => {
-//     const buffer = fs.readFileSync(dirName + '/' + fileName);
-//     const htmlString = buffer.toString();
-//     const $ = cheerio.load(htmlString);
-// }
-
-
-fs.readFile(fileName, (err, data) => {
+function processFile(fileName) {
     
-    if (err) {
-        throw err;
-    }
+    // load file
+    const buffer = fs.readFileSync(dirName + '/' + fileName);
+    const htmlString = buffer.toString();
+    const $ = cheerio.load(htmlString);
 
-    if (!data) {
-        throw 'no data';
-    }
-
-    const $ = cheerio.load(data.toString());
+    // get elements
 
     // table
     const tableName = $('h1').text().trim();
@@ -46,8 +31,10 @@ fs.readFile(fileName, (err, data) => {
     const referencesTable = referencesHeader.next();
     const references = referencesTable.find('tr').slice(1);
 
-    // create column definitions
+    // create definitions inside the table
     let tableDefinitions = '';
+
+    // columns
     columns.each((index, el) => {
 
         // indent
@@ -85,6 +72,9 @@ fs.readFile(fileName, (err, data) => {
 
         // TIMESTAMP
         // no need to do anything
+
+        // TODO: sanity check for other types?
+        // BOOLEAN is implemented as VARCHAR(1) right now
 
         tableDefinitions += ' ' + columnType;
 
@@ -130,14 +120,14 @@ fs.readFile(fileName, (err, data) => {
 
     tableDefinitions += '\n';
 
-    // TODO: some other stuff ...
-    
-    // output
-    fs.writeFileSync('out.sql', 
+    // add table to output
+    output +=
         'CREATE TABLE ' +
         tableName +
         ' (\n' +
         tableDefinitions +
-        ');\n\n'
-    );
-});
+        ');\n\n';
+};
+
+// output
+fs.writeFileSync('out.sql', output);
