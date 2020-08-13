@@ -2,7 +2,8 @@ const fs = require('fs');
 const cheerio = require('cheerio');
 
 const INDENT = '    ';
-let output = '';
+let createTableOutput = '';
+let alterTableOutput = '';
 
 const dirName = 'record';
 const files = fs.readdirSync(dirName);
@@ -25,11 +26,6 @@ function processFile(fileName) {
     const columnsTable = columnsHeader.next();
     const columns = columnsTable.find('tr[id^="field"]');
     const primaryKeyColumns = columns.filter('.primaryKeyField');
-
-    // references
-    const referencesHeader = $('h2').filter((_, el) => $(el).find('span').hasClass('foreignKeyColor'));
-    const referencesTable = referencesHeader.next();
-    const references = referencesTable.find('tr').slice(1);
 
     // create definitions inside the table
     let tableDefinitions = '';
@@ -83,20 +79,6 @@ function processFile(fileName) {
         if (primaryKeyColumns.length === 1 && $(el).hasClass('primaryKeyField')) {
             tableDefinitions += ' PRIMARY KEY';
         }
-
-        // REFERENCES
-        // All foreign keys will be generated as a reference to a single column.
-        // Composite foreign keys are not supported as they don't seem to be present in the original schema.
-        // TODO: sanity check for composite foreign keys to verify the assumption
-        const referenceRow = references.filter((_, el) => {
-            const fkColumnName = $(el).find('td.rt_tfkcolumn_name').text().trim();
-            return fkColumnName === columnName;
-        })
-        if (referenceRow.length) {
-            const referenceTableName = referenceRow.find('td.rt_tpktable_name a').text().trim();
-            const referenceColumnName = referenceRow.find('td.rt_tpkcolumn_name').text().trim();
-            tableDefinitions += ' REFERENCES ' + referenceTableName + ' (' + referenceColumnName + ')';
-        }
         
         // newline
         if (index !== columns.length - 1) {
@@ -110,7 +92,7 @@ function processFile(fileName) {
         tableDefinitions += ',\n';
 
         let primaryKeyColumnNames = [];
-        columns.each((_, el) => {
+        primaryKeyColumns.each((_, el) => {
             const columnName = $(el).find('td.rt_fname').text().trim();
             primaryKeyColumnNames.push(columnName);
         });
@@ -120,14 +102,47 @@ function processFile(fileName) {
 
     tableDefinitions += '\n';
 
-    // add table to output
-    output +=
+    // FOREIGN KEY
+    const fkHeader = $('h2').filter((_, el) => $(el).find('span').hasClass('foreignKeyColor'));
+    const fkTable = fkHeader.next();
+    const fkRows = fkTable.find('tr').slice(1);
+    
+    // group all columns by the foreign key
+    const foreignKeys = {};
+    fkRows.each((_, el) => {
+        const fkColumnName = $(el).find('td.rt_tfkcolumn_name').text().trim();
+        const fkName = $(el).find('td.rt_tfk_name').text().trim();
+        const referenceTableName = $(el).find('td.rt_tpktable_name a').text().trim();
+        const referenceColumnName = $(el).find('td.rt_tpkcolumn_name').text().trim();
+        if (!foreignKeys[fkName]) {
+            foreignKeys[fkName] = {
+                fkColumns: [],
+                referenceColumns: []
+            }
+        }
+        foreignKeys[fkName].fkColumns.push(fkColumnName);
+        foreignKeys[fkName].referenceColumns.push(referenceColumnName);
+        foreignKeys[fkName].referenceTableName = referenceTableName;
+    });
+
+    const constraints = Object.keys(foreignKeys).map((fkName) => {
+        return 'ALTER TABLE ' + tableName + ' ADD CONSTRAINT ' +
+            fkName +
+            ' FOREIGN KEY (' + foreignKeys[fkName].fkColumns.join(', ') + ')' +
+            ' REFERENCES ' + foreignKeys[fkName].referenceTableName +
+            ' (' + foreignKeys[fkName].referenceColumns.join(', ') + ');\n';
+        }
+    );
+
+    // add to output
+    createTableOutput +=
         'CREATE TABLE ' +
         tableName +
         ' (\n' +
         tableDefinitions +
         ');\n\n';
+    alterTableOutput += constraints.length ? constraints.join('') : '';
 };
 
 // output
-fs.writeFileSync('out.sql', output);
+fs.writeFileSync('out.sql', createTableOutput + alterTableOutput);
