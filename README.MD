@@ -8,17 +8,17 @@ Before running the query you might need to fix errors with incompatible types an
 
 examples:
 
-*purchase_order_id* is defined in *Billing_subscription_lines* as *VARCHAR(138)*
-but then references *Transactions (transaction_id)* in *billing_subscription_lines_transactions_fk*
-and *transaction_id* is defined as *NUMERIC(39, 0)*
+**purchase_order_id*** is defined in **Billing_subscription_line*s* as **VARCHAR(138)**
+but then references **Transactions (transaction_id)** in **billing_subscription_lines_transactions_fk**
+and **transaction_id** is defined as **NUMERIC(39, 0)**
 so the types are incompatible
-changing *purchase_order_id* to *NUMERIC(39, 0)* will fix it
+changing **purchase_order_id** to **NUMERIC(39, 0)** will fix it
 
-table *Group_test_cell* has a composite primary key *(crm_group_id, test_cell_id)*
-but a foreign key *campaignevent_group_test_cell_fk* references only *test_cell_id*
+table **Group_test_cell** has a composite primary key **(crm_group_id, test_cell_id)**
+but a foreign key **campaignevent_group_test_cell_fk** references only **test_cell_id**
 you need to either change the primary key or foreign key so that the columns match
 
-the same for *expense_plans_transaction_lines_fk* and *expense_plans_transaction_lines_fk_1*
+the same for **expense_plans_transaction_lines_fk** and **expense_plans_transaction_lines_fk_1**
 
 Node v12.18.1
 PostgreSQL 12.3
