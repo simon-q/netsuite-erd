@@ -1,5 +1,6 @@
 - npm install
-- put html in record/ folder
+- download https://www.netsuite.com/download/2020_1_Schema_and_Records_Browser.zip
+- put html from odbc/record/ into record/ folder
 - node script.js
 - result will be in out.sql
 
@@ -18,3 +19,6 @@ but a foreign key *campaignevent_group_test_cell_fk* references only *test_cell_
 you need to either change the primary key or foreign key so that the columns match
 
 the same for *expense_plans_transaction_lines_fk* and *expense_plans_transaction_lines_fk_1*
+
+Node v12.18.1
+PostgreSQL 12.3
